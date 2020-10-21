@@ -1,0 +1,2 @@
+cabal install sqlite-simple-errors-0.6.1.0
+cabal install sqlite-simple
