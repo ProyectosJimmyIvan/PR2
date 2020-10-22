@@ -47,23 +47,12 @@ tabular text = do tabular_aux (text, Prelude.length text)
 --Entradas: una lista de strings y un contador iniciando en 0
 --Salida: impresión de los elementos de la lista
 --Restricciones: debe ser una lista de string
-printSubLista (lista, cont) = do
+printSubLista lista cont = do
   if (cont == Prelude.length lista)
     then do
       putStr ("\n")
     else do
       putStr (tabular (lista !! cont))
       putStr ("\t")
-      printSubLista (lista, cont + 1)
-
---Función que imprime sublistas de string de una lista
---Entradas: Una lista de sublistas de strings y un contador que inicia en 0
---Salida: Una impresión de la lista de sublistas
---Restricciones: debe ser una lista de sublistas de string
-printListaGeneral (lista, cont) = do
-  if (cont == Prelude.length lista)
-    then do
-      putStr ("\n")
-    else do
-      printSubLista (lista !! cont, 0)
-      printListaGeneral (lista, cont + 1)
+      let contador=cont+1
+      printSubLista lista contador
