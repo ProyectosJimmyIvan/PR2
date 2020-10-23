@@ -8,6 +8,7 @@ import Data.Text
 import Database.SQLite.Simple
 import Database.SQLite.SimpleErrors (runDBAction)
 import FileHandler
+
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 --Data types
@@ -63,8 +64,8 @@ instance ToRow Empresa where
 
 printEmpresas :: Empresa -> IO ()
 printEmpresas elemento = do
-  let nombre =  getNombreEmpresa (elemento)
-  let website =  getWebsiteEmpresa (elemento)
+  let nombre = getNombreEmpresa (elemento)
+  let website = getWebsiteEmpresa (elemento)
   let contacto = getContactoEmpresa (elemento)
   let pedal = getPedalEmpresa (elemento)
   let electrico = getElectricoEmpresa (elemento)
@@ -95,7 +96,7 @@ printParqueos elemento = do
   let provincia = getProvincia (elemento)
   let x = getXParqueo (elemento)
   let y = getYParqueo (elemento)
-  let lista= [unpack nombre,unpack direccion,unpack provincia,show x,show y]
+  let lista = [unpack nombre, unpack direccion, unpack provincia, show x, show y]
   printSubLista lista 0
 
 insertarParqueo pnombre pdireccion pprovincia px py = do
@@ -127,9 +128,8 @@ printBicicletas elemento = do
   let id = getIdBicicleta (elemento)
   let tipo = getTipoBicicleta (elemento)
   let parqueo = getParqueoBicicleta (elemento)
-  let lista= [unpack id,unpack tipo,unpack parqueo]
+  let lista = [unpack id, unpack tipo, unpack parqueo]
   printSubLista lista 0
-
 
 insertarBicicleta pId pTipo pParqueo = do
   let id = pack pId
@@ -155,7 +155,8 @@ printUsuarios :: Usuario -> IO ()
 printUsuarios elemento = do
   let cedula = getCedulaUsuario (elemento)
   let nombre = getNombre (elemento)
-  print (show cedula ++ "  " ++ unpack nombre)
+  let lista = [show cedula, unpack nombre]
+  printSubLista lista 0
 
 insertarUsuario pcedula pnombre = do
   let cedula = pcedula
