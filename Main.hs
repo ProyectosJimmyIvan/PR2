@@ -57,6 +57,59 @@ consultarBicicletas = do
   printBicicletasParqueo (q !! indiceMinimo)
   close conn
 
+alquilar = do
+  putStr ("\n\n")
+  putStrLn "Ingrese un numero de cedula de usuario valido para empezar el tramite"
+  putStr ">>"
+  hFlush stdout
+  cedula <- getLine
+  conn <- open "PR2.db"
+  usuario <- query conn "SELECT * from Usuario where Cedula=? " (Only (read cedula :: Int64)) :: IO [Usuario]
+  close conn
+  if (null usuario)
+    then do
+      putStrLn "\n No hay un usuario con esta cedula \n"
+    else do
+      conn <- open "PR2.db"
+      q <- query_ conn "SELECT * from Parqueo" :: IO [Parqueo]
+      putStrLn "Ingrese un X "
+      putStr ">>"
+      hFlush stdout
+      input1 <- getLine
+      let x = read input1 :: Int64
+      putStrLn "Ingrese un y "
+      putStr ">>"
+      hFlush stdout
+      input2 <- getLine
+      let y = read input2 :: Int64
+      let listaRes = [1.0]
+      let distancias = calcularDistancias q listaRes 0 x y
+      let minimo = minimum distancias
+      let indiceMinimoConJust = elemIndex minimo distancias
+      let indiceMinimo = fromJust indiceMinimoConJust
+      let nombreParqueoSalida = getNombreParqueo (q !! indiceMinimo)
+      print nombreParqueoSalida
+      putStr ("\n")
+      let headParqueo = ["Nombre", "Ubicacion", "Provincia", "X", "Y"]
+      printSubLista headParqueo 0
+      mapM_ printParqueos q
+      putStr ("\n")
+      putStr ("\n")
+      putStrLn "Ingrese un parqueo de llegada "
+      putStr ">>"
+      hFlush stdout
+      nombreParqueoLlegada <- getLine
+      parqueoLlegada <- query conn "SELECT * from Parqueo where  Nombre=?;" (Only (pack nombreParqueoLlegada :: Text)) :: IO [Parqueo]
+      close conn
+      if (null parqueoLlegada)
+        then do
+          putStrLn "\n No hay un parqueo con este nombre \n"
+        else do
+          if (unpack nombreParqueoSalida == nombreParqueoLlegada)
+            then do
+              putStrLn "\n No se puede llegar al parqueo del que salio\n"
+            else print "gg"
+
 opcionesGenerales :: IO ()
 opcionesGenerales = do
   putStrLn "\n\n=================================Opciones Generales=================================\n\n"
@@ -72,7 +125,7 @@ opcionesGenerales = do
     else
       if (opcion == "2")
         then do
-          putStrLn "2"
+          alquilar
           opcionesGenerales
         else
           if (opcion == "3")
