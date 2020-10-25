@@ -63,6 +63,7 @@ alquilar = do
   putStr ">>"
   hFlush stdout
   cedula <- getLine
+  putStr ("\n")
   conn <- open "PR2.db"
   usuario <- query conn "SELECT * from Usuario where Cedula=? " (Only (read cedula :: Int64)) :: IO [Usuario]
   close conn
@@ -76,11 +77,13 @@ alquilar = do
       putStr ">>"
       hFlush stdout
       input1 <- getLine
+      putStr ("\n")
       let x = read input1 :: Int64
       putStrLn "Ingrese un y "
       putStr ">>"
       hFlush stdout
       input2 <- getLine
+      putStr ("\n")
       let y = read input2 :: Int64
       let listaRes = [1.0]
       let distancias = calcularDistancias q listaRes 0 x y
@@ -88,17 +91,18 @@ alquilar = do
       let indiceMinimoConJust = elemIndex minimo distancias
       let indiceMinimo = fromJust indiceMinimoConJust
       let nombreParqueoSalida = getNombreParqueo (q !! indiceMinimo)
-      print nombreParqueoSalida
-      putStr ("\n")
+      putStr ("\n\n")
+      print ("El parqueo mas cercano es: " ++ (unpack nombreParqueoSalida))
+      putStr ("\n\n")
       let headParqueo = ["Nombre", "Ubicacion", "Provincia", "X", "Y"]
       printSubLista headParqueo 0
       mapM_ printParqueos q
-      putStr ("\n")
-      putStr ("\n")
+      putStr ("\n\n")
       putStrLn "Ingrese un parqueo de llegada "
       putStr ">>"
       hFlush stdout
       nombreParqueoLlegada <- getLine
+      putStr ("\n\n")
       parqueoLlegada <- query conn "SELECT * from Parqueo where  Nombre=?;" (Only (pack nombreParqueoLlegada :: Text)) :: IO [Parqueo]
       close conn
       if (null parqueoLlegada)
@@ -108,7 +112,25 @@ alquilar = do
           if (unpack nombreParqueoSalida == nombreParqueoLlegada)
             then do
               putStrLn "\n No se puede llegar al parqueo del que salio\n"
-            else print "gg"
+            else do
+              printBicicletasParqueo (q !! indiceMinimo)
+              putStrLn "Ingrese el identificador de la bicicleta a alquilar "
+              putStr ">>"
+              hFlush stdout
+              bicicletaName <- getLine
+              putStr ("\n")
+              putStr ("\n\n")
+              connection <- open "PR2.db"
+              bicletaLista <- query connection "SELECT * from Bicicleta where Identificador=? and Parqueo=? and estado=0;" (pack bicicletaName :: Text, nombreParqueoSalida :: Text) :: IO [Bicicleta]
+              close connection
+              if (null bicletaLista)
+                then do
+                  putStrLn "\n No hay bicicletas con este id  \n"
+                else do
+                  connection <- open "PR2.db"
+                  insertarAlquiler <- runDBAction $ execute conn "Insert into Alquiler(Salida,Destino,Bicicleta,Estado,Usuario) values (?,?,?,?,?)" (Alquiler nombreParqueoSalida nombreParqueoSalida (pack bicicletaName) 1 (getCedulaUsuario (usuario !! 0)))
+                  updateBicicleta <- runDBAction $ execute conn "Update Bicicleta set Estado=1 where identificador=?" (Only (pack bicicletaName :: Text))
+                  close connection
 
 opcionesGenerales :: IO ()
 opcionesGenerales = do
@@ -252,7 +274,19 @@ printearUsuarios = do
       if (null q)
         then do
           putStr "\n No hay un Usuario que tenga esta Cedula \n"
-        else mapM_ printUsuarios q
+        else do
+          mapM_ printUsuarios q
+          putStr ("\n\n")
+          putStrLn "Alquileres:"
+          putStr ("\n")
+          let headAlquileres = ["ID", "Salida", "Destino", "Bicicleta"]
+          alquileres <- query conn "SELECT * from Alquiler where Usuario=?;" (Only (read opcion :: Int64)) :: IO [AlquilerP]
+          if (null alquileres)
+            then do
+              putStr "\n Este usaurio no tiene alquileres \n"
+            else do
+              printSubLista headAlquileres 0
+              mapM_ printAlquileres alquileres
 
   close conn
 
@@ -314,6 +348,9 @@ cargarBicicletas = do
 main :: IO ()
 main = do
   cargarUsuarios
+  putStr ("\n")
   cargarParqueos
+  putStr ("\n")
   cargarBicicletas
+  putStr ("\n")
   menuPrincipal

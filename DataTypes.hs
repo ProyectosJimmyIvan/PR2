@@ -44,6 +44,24 @@ data Usuario = Usuario
   }
   deriving (Eq, Read, Show)
 
+data Alquiler = Alquiler
+  { salidaA :: Text,
+    llegadaA :: Text,
+    bicicletaA :: Text,
+    estadoA :: Int64,
+    usuarioA :: Int64
+  }
+
+data AlquilerP = AlquilerP
+  { idAP :: Int64,
+    salidaAP :: Text,
+    llegadaAP :: Text,
+    bicicletaAP :: Text,
+    estadoAP :: Int64,
+    usuarioAP :: Int64
+  }
+  deriving (Eq, Read, Show)
+
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --gets de la empresa e instancias
 getNombreEmpresa (Empresa nombre _ _ _ _) = nombre
@@ -190,3 +208,38 @@ getBicicletaInsertar lista = do
   let tipo = lista !! 1
   let ubicacion = lista !! 2
   insertarBicicleta id tipo ubicacion
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+instance FromRow Alquiler where
+  fromRow = Alquiler <$> field <*> field <*> field <*> field <*> field
+
+instance ToRow Alquiler where
+  toRow (Alquiler salidaA llegadaA bicicletaA estadoA usuarioA) = toRow (salidaA, llegadaA, bicicletaA, estadoA, usuarioA)
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+instance FromRow AlquilerP where
+  fromRow = AlquilerP <$> field <*> field <*> field <*> field <*> field <*> field
+
+instance ToRow AlquilerP where
+  toRow (AlquilerP idAP salidaA llegadaA bicicletaA estadoA usuarioA) = toRow (idAP, salidaA, llegadaA, bicicletaA, estadoA, usuarioA)
+
+getIdAlquiler (AlquilerP id _ _ _ _ _) = id
+
+getSalidaAlquiler (AlquilerP _ salida _ _ _ _) = salida
+
+getLlegadaAlquiler (AlquilerP _ _ llegada _ _ _) = llegada
+
+getBicicletaAlquiler (AlquilerP _ _ _ bicicleta _ _) = bicicleta
+
+getUsuarioAlquiler (AlquilerP _ _ _ _ _ usuario) = usuario
+
+printAlquileres :: AlquilerP -> IO ()
+printAlquileres elemento = do
+  let id = getIdAlquiler (elemento)
+  let salida = getSalidaAlquiler (elemento)
+  let llegada = getLlegadaAlquiler (elemento)
+  let bicicleta = getBicicletaAlquiler (elemento)
+  let lista = [show id, unpack salida, unpack llegada, unpack bicicleta]
+  printSubLista lista 0
