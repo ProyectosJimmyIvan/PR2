@@ -128,9 +128,37 @@ alquilar = do
                   putStrLn "\n No hay bicicletas con este id  \n"
                 else do
                   connection <- open "PR2.db"
-                  insertarAlquiler <- runDBAction $ execute conn "Insert into Alquiler(Salida,Destino,Bicicleta,Estado,Usuario) values (?,?,?,?,?)" (Alquiler nombreParqueoSalida nombreParqueoSalida (pack bicicletaName) 1 (getCedulaUsuario (usuario !! 0)))
-                  updateBicicleta <- runDBAction $ execute conn "Update Bicicleta set Estado=1 where identificador=?" (Only (pack bicicletaName :: Text))
+                  execute conn "Insert into Alquiler(Salida,Destino,Bicicleta,Estado,Usuario) values (?,?,?,?,?)" (Alquiler nombreParqueoSalida nombreParqueoSalida (pack bicicletaName) 1 (getCedulaUsuario (usuario !! 0)))
+                  execute conn "Update Bicicleta set Estado=1 where identificador=?" (Only (pack bicicletaName :: Text))
+                  listaIdAlquiler <- query_ conn "select max(ID) from Alquiler" :: IO [IdAlquiler]
+                  let idAlquiler = getIdAlquiler2 (listaIdAlquiler !! 0)
+                  putStrLn "\nSe ha creado el alquiler, estos son los datos: "
+                  putStr ("\n\n")
+                  let headAlquiler = ["ID", "Salida", "Llegada", "Bicicleta", "Usuario"]
+                  printSubLista headAlquiler 0
+                  let listaAlquiler = [show idAlquiler, unpack nombreParqueoSalida, nombreParqueoLlegada, bicicletaName, cedula]
+                  putStr ("\n")
+                  printSubLista listaAlquiler 0
                   close connection
+
+facturar = do
+  putStr ("\n\n")
+  putStrLn "Ingrese el numero de alquiler valido para empezar el tramite"
+  putStr ">>"
+  hFlush stdout
+  numeroAlquiler <- getLine
+  putStr ("\n")
+  conn <- open "PR2.db"
+  listaAlquiler <- query conn "select * from Alquiler where estado=1 and Id=?" (Only (read numeroAlquiler :: Int64)) :: IO [AlquilerP]
+  close conn
+  if (null listaAlquiler)
+    then do
+      putStrLn "\n Lo sentimos, el alquiler que quiere facturar no existe o ya fue facturado \n"
+    else do
+      let bicicleta = getBicicletaAlquiler (listaAlquiler !! 0)
+      let parqueoLlegada = getLlegadaAlquiler (listaAlquiler !! 0)
+      execute conn "Update Alquiler set Estado=0 where ID=?" (Only (pack numeroAlquiler :: Text))
+      execute conn "update Bicicleta set Estado=0, Parqueo=? where Identificador=?" (parqueoLlegada, bicicleta)
 
 opcionesGenerales :: IO ()
 opcionesGenerales = do
@@ -152,6 +180,7 @@ opcionesGenerales = do
         else
           if (opcion == "3")
             then do
+              facturar
               opcionesGenerales
             else
               if (opcion == "4")

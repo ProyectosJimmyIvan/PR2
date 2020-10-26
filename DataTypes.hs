@@ -62,6 +62,27 @@ data AlquilerP = AlquilerP
   }
   deriving (Eq, Read, Show)
 
+data Factura = Factura
+  { alquilerF :: Int64,
+    kilometrosF :: Int64,
+    totalF :: Int64,
+    estadoF :: Int64
+  }
+  deriving (Eq, Read, Show)
+
+data FacturaP = FacturaP
+  { idFP :: Int64,
+    alquilerFP :: Int64,
+    kilometrosFP :: Int64,
+    totalFP :: Int64,
+    estadoFP :: Int64
+  }
+  deriving (Eq, Read, Show)
+
+data IdAlquiler = IdAlquiler
+  {idAlquiler :: Int64}
+  deriving (Eq, Read, Show)
+
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --gets de la empresa e instancias
 getNombreEmpresa (Empresa nombre _ _ _ _) = nombre
@@ -243,3 +264,45 @@ printAlquileres elemento = do
   let bicicleta = getBicicletaAlquiler (elemento)
   let lista = [show id, unpack salida, unpack llegada, unpack bicicleta]
   printSubLista lista 0
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+instance FromRow Factura where
+  fromRow = Factura <$> field <*> field <*> field <*> field
+
+instance ToRow Factura where
+  toRow (Factura alquilerF kilometrosF totalF estadoF) = toRow (alquilerF, kilometrosF, totalF, estadoF)
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+instance FromRow FacturaP where
+  fromRow = FacturaP <$> field <*> field <*> field <*> field <*> field
+
+instance ToRow FacturaP where
+  toRow (FacturaP idFP alquilerFP kilometrosFP totalFP estadoFP) = toRow (idFP, alquilerFP, kilometrosFP, totalFP, estadoFP)
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+getIdFactura (FacturaP id _ _ _ _) = id
+
+getAlquilerFactura (FacturaP _ alquiler _ _ _) = alquiler
+
+getKilometrosFactura (FacturaP _ _ kilometros _ _) = kilometros
+
+getTotalFactura (FacturaP _ _ _ total _) = total
+
+printFacturas :: FacturaP -> IO ()
+printFacturas elemento = do
+  let id = getIdFactura (elemento)
+  let alquiler = getAlquilerFactura (elemento)
+  let kilometros = getKilometrosFactura (elemento)
+  let total = getTotalFactura (elemento)
+  let lista = [show id, show alquiler, show kilometros, show total]
+  printSubLista lista 0
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+instance FromRow IdAlquiler where
+  fromRow = IdAlquiler <$> field
+
+getIdAlquiler2 (IdAlquiler id) = id
