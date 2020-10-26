@@ -2,6 +2,7 @@
 
 module Main where
 
+import Data.IORef
 import Data.Int (Int64)
 import Data.List
 import Data.Maybe
@@ -128,7 +129,7 @@ alquilar = do
                   putStrLn "\n No hay bicicletas con este id  \n"
                 else do
                   connection <- open "PR2.db"
-                  execute conn "Insert into Alquiler(Salida,Destino,Bicicleta,Estado,Usuario) values (?,?,?,?,?)" (Alquiler nombreParqueoSalida nombreParqueoSalida (pack bicicletaName) 1 (getCedulaUsuario (usuario !! 0)))
+                  execute conn "Insert into Alquiler(Salida,Destino,Bicicleta,Estado,Usuario) values (?,?,?,?,?)" (Alquiler nombreParqueoSalida (pack nombreParqueoLlegada :: Text) (pack bicicletaName) 1 (getCedulaUsuario (usuario !! 0)))
                   execute conn "Update Bicicleta set Estado=1 where identificador=?" (Only (pack bicicletaName :: Text))
                   listaIdAlquiler <- query_ conn "select max(ID) from Alquiler" :: IO [IdAlquiler]
                   let idAlquiler = getIdAlquiler2 (listaIdAlquiler !! 0)
@@ -157,8 +158,38 @@ facturar = do
     else do
       let bicicleta = getBicicletaAlquiler (listaAlquiler !! 0)
       let parqueoLlegada = getLlegadaAlquiler (listaAlquiler !! 0)
-      execute conn "Update Alquiler set Estado=0 where ID=?" (Only (pack numeroAlquiler :: Text))
+      let parqueoSalida = getSalidaAlquiler (listaAlquiler !! 0)
+      let idAlquiler = getIdAlquiler (listaAlquiler !! 0)
+      conn <- open "PR2.db"
+      execute conn "Update Alquiler set Estado=0 where Id=?;" (Only (read numeroAlquiler :: Int64))
       execute conn "update Bicicleta set Estado=0, Parqueo=? where Identificador=?" (parqueoLlegada, bicicleta)
+      bicletaLista <- query conn "SELECT * from Bicicleta where Identificador=?" (Only (bicicleta :: Text)) :: IO [Bicicleta]
+      let tipoBici = getTipoBicicleta (bicletaLista !! 0)
+      listaEmpresa <- query_ conn "select *  from Empresa" :: IO [Empresa]
+      let pedalEmpresa = getPedalEmpresa (listaEmpresa !! 0)
+      let electricoEmpresa = getElectricoEmpresa (listaEmpresa !! 0)
+      let enteroElectrico = fromIntegral electricoEmpresa
+      variableMutable <- newIORef (0 :: Int)
+      if (unpack tipoBici == "AE")
+        then do
+          modifyIORef variableMutable (+ enteroElectrico)
+          putStr "\n"
+        else do
+          modifyIORef variableMutable (+ fromIntegral pedalEmpresa)
+          putStr ("\n")
+      montoKilometro <- readIORef variableMutable
+      let montoKilometroStr = show montoKilometro
+      parqueoLlegadaLista <- query conn "SELECT * from Parqueo where  Nombre=?;" (Only (parqueoLlegada :: Text)) :: IO [Parqueo]
+      parqueoSalidaLista <- query conn "SELECT * from Parqueo where  Nombre=?;" (Only (parqueoSalida :: Text)) :: IO [Parqueo]
+      let x1 = getXParqueo (parqueoLlegadaLista !! 0)
+      let x2 = getXParqueo (parqueoSalidaLista !! 0)
+      let y1 = getYParqueo (parqueoLlegadaLista !! 0)
+      let y2 = getYParqueo (parqueoSalidaLista !! 0)
+      let distance = round (distancia (fromIntegral x1, fromIntegral y1) (fromIntegral x2, fromIntegral y2))
+      let montoTotal = distance * read montoKilometroStr :: Int64
+      execute conn "Insert into Factura(alquiler,cantidadkilometros,totalpagar,Estado) values (?,?,?,?)" (Factura idAlquiler distance montoTotal 1)
+      putStrLn "\n Se ha facturado el alquiler correctamente!  \n"
+      close conn
 
 opcionesGenerales :: IO ()
 opcionesGenerales = do
