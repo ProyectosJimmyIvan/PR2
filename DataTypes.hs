@@ -83,6 +83,10 @@ data IdAlquiler = IdAlquiler
   {idAlquiler :: Int64}
   deriving (Eq, Read, Show)
 
+data IdFactura = IdFactura
+  {idFactura :: Int64}
+  deriving (Eq, Read, Show)
+
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --gets de la empresa e instancias
 getNombreEmpresa (Empresa nombre _ _ _ _) = nombre
@@ -108,7 +112,8 @@ printEmpresas elemento = do
   let contacto = getContactoEmpresa (elemento)
   let pedal = getPedalEmpresa (elemento)
   let electrico = getElectricoEmpresa (elemento)
-  print (unpack nombre ++ "       " ++ unpack website ++ "      " ++ unpack contacto ++ "     " ++ show pedal ++ "    " ++ show electrico)
+  let lista = [unpack nombre, unpack website, unpack contacto, show pedal, show electrico]
+  printSubLista lista 0
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --get de parqueos e instancias
@@ -306,3 +311,8 @@ instance FromRow IdAlquiler where
   fromRow = IdAlquiler <$> field
 
 getIdAlquiler2 (IdAlquiler id) = id
+
+instance FromRow IdFactura where
+  fromRow = IdFactura <$> field
+
+getIdFactura2 (IdFactura id) = id

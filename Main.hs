@@ -129,7 +129,11 @@ alquilar = do
                   putStrLn "\n No hay bicicletas con este id  \n"
                 else do
                   connection <- open "PR2.db"
-                  execute conn "Insert into Alquiler(Salida,Destino,Bicicleta,Estado,Usuario) values (?,?,?,?,?)" (Alquiler nombreParqueoSalida (pack nombreParqueoLlegada :: Text) (pack bicicletaName) 1 (getCedulaUsuario (usuario !! 0)))
+                  let nombreParqueoLlegadaText = pack nombreParqueoLlegada
+                  let bicicletaNameText = pack bicicletaName
+                  let cedulaInt64 = read cedula :: Int64
+                  let estado = 1 :: Int64
+                  execute conn "Insert into Alquiler(Salida,Destino,Bicicleta,Estado,Usuario) values (?,?,?,?,?)" (Alquiler nombreParqueoSalida nombreParqueoLlegadaText bicicletaNameText estado cedulaInt64)
                   execute conn "Update Bicicleta set Estado=1 where identificador=?" (Only (pack bicicletaName :: Text))
                   listaIdAlquiler <- query_ conn "select max(ID) from Alquiler" :: IO [IdAlquiler]
                   let idAlquiler = getIdAlquiler2 (listaIdAlquiler !! 0)
@@ -188,8 +192,97 @@ facturar = do
       let distance = round (distancia (fromIntegral x1, fromIntegral y1) (fromIntegral x2, fromIntegral y2))
       let montoTotal = distance * read montoKilometroStr :: Int64
       execute conn "Insert into Factura(alquiler,cantidadkilometros,totalpagar,Estado) values (?,?,?,?)" (Factura idAlquiler distance montoTotal 1)
-      putStrLn "\n Se ha facturado el alquiler correctamente!  \n"
+      listaMaxFactura <- query_ conn "SELECT max(Id) from  Factura;" :: IO [IdFactura]
+      let idfactura = getIdFactura2 (listaMaxFactura !! 0)
+      listaFactura <- query conn "SELECT * from  Factura where Id=?;" (Only (idfactura)) :: IO [FacturaP]
+      putStrLn "\n Se ha facturado el alquiler correctamente!  \n\n"
+      listaEmpresa <- query_ conn "select *  from Empresa" :: IO [Empresa]
+      let alquilerid = getAlquilerFactura (listaFactura !! 0)
+      listaAlquiler <- query conn "select * from Alquiler where   Id=?" (Only (alquilerid)) :: IO [AlquilerP]
+      let bicicleta = getBicicletaAlquiler (listaAlquiler !! 0)
+      bicletaLista <- query conn "SELECT * from Bicicleta where Identificador=?" (Only (bicicleta :: Text)) :: IO [Bicicleta]
+      let tipobici = getTipoBicicleta (bicletaLista !! 0)
+      let idbici = getIdBicicleta (bicletaLista !! 0)
+      let parqueoLlegada = getLlegadaAlquiler (listaAlquiler !! 0)
+      let parqueoSalida = getSalidaAlquiler (listaAlquiler !! 0)
+      let kilometros = getKilometrosFactura (listaFactura !! 0)
+      let totalColones = getTotalFactura (listaFactura !! 0)
+      let pedalEmpresa = getPedalEmpresa (listaEmpresa !! 0)
+      let electricoEmpresa = getElectricoEmpresa (listaEmpresa !! 0)
+      let enteroElectrico = fromIntegral electricoEmpresa
+      variableMutable <- newIORef (0 :: Int)
+      if (unpack tipobici == "AE")
+        then do
+          modifyIORef variableMutable (+ enteroElectrico)
+        else do
+          modifyIORef variableMutable (+ fromIntegral pedalEmpresa)
+      putStrLn ("\n ID de la Factura: " ++ show (idfactura) ++ "\n\n")
+      putStrLn ("Empresa : \n")
+      let headEmpresa = ["Nombre", "Website", "Contacto", "KM/Electrica", "KM/Tradicional"]
+      printSubLista headEmpresa 0
+      putStr ("\n")
+      printEmpresas (listaEmpresa !! 0)
+      putStr ("\n\n")
+      tarifa <- readIORef variableMutable
+      let listaFacturaImpresion = [unpack parqueoSalida, unpack parqueoLlegada, unpack idbici, unpack tipobici, show kilometros, show tarifa, show totalColones]
+      let headFactura = ["Salida", "Llegada", "Bicicleta", "Tipo", "Cantidad de Kilometros", "Tarifa/KM", "Total Factura"]
+      putStrLn ("Factura : \n")
+      printSubLista headFactura 0
+      putStr ("\n\n")
+      printSubLista listaFacturaImpresion 0
+      putStr ("\n")
       close conn
+
+mostrarFactura = do
+  putStr ("\n\n")
+  putStrLn "Ingrese el numero de factura  para consultar"
+  putStr ">>"
+  hFlush stdout
+  idFactura <- getLine
+  putStr ("\n")
+  conn <- open "PR2.db"
+  let headEmpresa = ["Nombre", "Website", "Contacto", "KM/Electrica", "KM/Tradicional"]
+  listaFactura <- query conn "SELECT * from  Factura where Id=?;" (Only (read idFactura :: Int64)) :: IO [FacturaP]
+  if (null listaFactura)
+    then do
+      putStrLn "\n Lo sentimos, la factura no existe \n"
+    else do
+      listaEmpresa <- query_ conn "select *  from Empresa" :: IO [Empresa]
+      let alquilerid = getAlquilerFactura (listaFactura !! 0)
+      listaAlquiler <- query conn "select * from Alquiler where   Id=?" (Only (alquilerid)) :: IO [AlquilerP]
+      let bicicleta = getBicicletaAlquiler (listaAlquiler !! 0)
+      bicletaLista <- query conn "SELECT * from Bicicleta where Identificador=?" (Only (bicicleta :: Text)) :: IO [Bicicleta]
+      let tipobici = getTipoBicicleta (bicletaLista !! 0)
+      let idbici = getIdBicicleta (bicletaLista !! 0)
+      let parqueoLlegada = getLlegadaAlquiler (listaAlquiler !! 0)
+      let parqueoSalida = getSalidaAlquiler (listaAlquiler !! 0)
+      let kilometros = getKilometrosFactura (listaFactura !! 0)
+      let totalColones = getTotalFactura (listaFactura !! 0)
+      let pedalEmpresa = getPedalEmpresa (listaEmpresa !! 0)
+      let electricoEmpresa = getElectricoEmpresa (listaEmpresa !! 0)
+      let enteroElectrico = fromIntegral electricoEmpresa
+      variableMutable <- newIORef (0 :: Int)
+      if (unpack tipobici == "AE")
+        then do
+          modifyIORef variableMutable (+ enteroElectrico)
+        else do
+          modifyIORef variableMutable (+ fromIntegral pedalEmpresa)
+      putStrLn ("\n ID de la Factura: " ++ idFactura ++ "\n\n")
+      putStrLn ("Empresa : \n")
+      printSubLista headEmpresa 0
+      putStr ("\n")
+      printEmpresas (listaEmpresa !! 0)
+      putStr ("\n\n")
+      tarifa <- readIORef variableMutable
+      let listaFacturaImpresion = [unpack parqueoSalida, unpack parqueoLlegada, unpack idbici, unpack tipobici, show kilometros, show tarifa, show totalColones]
+      let headFactura = ["Salida", "Llegada", "Bicicleta", "Tipo", "Cantidad de Kilometros", "Tarifa/KM", "Total Factura"]
+      putStrLn ("Factura : \n")
+      printSubLista headFactura 0
+      putStr ("\n\n")
+      printSubLista listaFacturaImpresion 0
+      putStr ("\n")
+
+  close conn
 
 opcionesGenerales :: IO ()
 opcionesGenerales = do
@@ -216,6 +309,7 @@ opcionesGenerales = do
             else
               if (opcion == "4")
                 then do
+                  mostrarFactura
                   opcionesGenerales
                 else
                   if (opcion == "5")
