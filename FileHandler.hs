@@ -2,9 +2,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module FileHandler where
+
 import Control.Monad (when)
-import Data.List.Split ( splitOneOf )
 import Data.Int (Int64)
+import Data.List.Split (splitOneOf)
 import Data.Text
 import Database.SQLite.Simple
 import Database.SQLite.SimpleErrors
@@ -26,22 +27,18 @@ split p1 p2 = func p1 p2 [[]]
     func p1 [] p3 = Prelude.reverse $ Prelude.map (Prelude.reverse) p3
     func p1 (p2 : pn) (p3 : px) = if p2 == p1 then func p1 pn ([] : (p3 : px)) else func p1 pn ((p2 : p3) : px)
 
-
-
-
 --Función que realiza una tabulación para mostrar un texto en idea de tabla
 --Entradas: Un string y un contador iniciando en 0
 --Restricciones: string no mayor a 25 caracteres
 --Salida: un string
 tabular_aux (text, cont) = do
-  if (cont >= 25)
+  if (cont >= 20)
     then do
       text
     else do
       tabular_aux (text ++ " ", cont + 1)
 
 tabular text = do tabular_aux (text, Prelude.length text)
-
 
 --Función que imprime una sublista
 --Entradas: una lista de strings y un contador iniciando en 0
@@ -54,5 +51,5 @@ printSubLista lista cont = do
     else do
       putStr (tabular (lista !! cont))
       putStr ("\t")
-      let contador=cont+1
+      let contador = cont + 1
       printSubLista lista contador

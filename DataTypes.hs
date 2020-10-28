@@ -10,7 +10,6 @@ import Database.SQLite.SimpleErrors (runDBAction)
 import FileHandler
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 --Data types
 data Parqueo = Parqueo
   { nombreP :: Text,
@@ -85,6 +84,37 @@ data IdAlquiler = IdAlquiler
 
 data IdFactura = IdFactura
   {idFactura :: Int64}
+  deriving (Eq, Read, Show)
+
+data Top5Parqueos = Top5Parqueos
+  { nombreParqueoTop :: Text,
+    cantidadParqueoTop :: Int64
+  }
+  deriving (Eq, Read, Show)
+
+data Top5Usuarios = Top5Usuarios
+  { cedulaUsuarioTop :: Int64,
+    nombreUsuarioTop :: Text,
+    cantidadUsuarioTop :: Int64
+  }
+  deriving (Eq, Read, Show)
+
+data Top3Bicicletas = Top3Bicicletas
+  { idBicicletaTop :: Text,
+    cantidadkmBicicletaTop :: Int64
+  }
+  deriving (Eq, Read, Show)
+
+data Resumen = Resumen
+  { cantidadViajesResumen :: Int64,
+    cantidadkmResumen :: Int64,
+    cantidadpagarBicicletaTop :: Int64
+  }
+  deriving (Eq, Read, Show)
+
+data CantidadViajesResumenConsulta = CantidadViajesResumenConsulta
+  { viajescantidadconsulta :: Int64
+  }
   deriving (Eq, Read, Show)
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -271,7 +301,6 @@ printAlquileres elemento = do
   printSubLista lista 0
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------
--------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 instance FromRow Factura where
   fromRow = Factura <$> field <*> field <*> field <*> field
@@ -316,3 +345,83 @@ instance FromRow IdFactura where
   fromRow = IdFactura <$> field
 
 getIdFactura2 (IdFactura id) = id
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+instance FromRow Top5Parqueos where
+  fromRow = Top5Parqueos <$> field <*> field
+
+instance ToRow Top5Parqueos where
+  toRow (Top5Parqueos nombre cantidad) = toRow (nombre, cantidad)
+
+getNombreParqueoTop (Top5Parqueos name _) = name
+
+getCantidadParqueoTop (Top5Parqueos _ cantidad) = cantidad
+
+printTopParqueos :: Top5Parqueos -> IO ()
+printTopParqueos elemento = do
+  let name = getNombreParqueoTop (elemento)
+  let cantidad = getCantidadParqueoTop (elemento)
+  let lista = [unpack name, show cantidad]
+  printSubLista lista 0
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+instance FromRow Top5Usuarios where
+  fromRow = Top5Usuarios <$> field <*> field <*> field
+
+getCedulaUsuarioTop (Top5Usuarios cedula _ _) = cedula
+
+getNombreUsuarioTop (Top5Usuarios _ nombre _) = nombre
+
+getCantidadUsuarioTop (Top5Usuarios _ _ cantidad) = cantidad
+
+printTopUsuario :: Top5Usuarios -> IO ()
+printTopUsuario elemento = do
+  let nombre = getNombreUsuarioTop (elemento)
+  let cedula = getCedulaUsuarioTop (elemento)
+  let cantidad = getCantidadUsuarioTop (elemento)
+  let lista = [show cedula, unpack nombre, show cantidad]
+  printSubLista lista 0
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+instance FromRow Top3Bicicletas where
+  fromRow = Top3Bicicletas <$> field <*> field
+
+getIdBicicletasTop (Top3Bicicletas id _) = id
+
+getCantidadBicicletasTop (Top3Bicicletas _ cantidad) = cantidad
+
+printTopBicicletas :: Top3Bicicletas -> IO ()
+printTopBicicletas elemento = do
+  let id = getIdBicicletasTop (elemento)
+  let cantidad = getCantidadBicicletasTop (elemento)
+  let lista = [unpack id, show cantidad]
+  printSubLista lista 0
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+instance FromRow Resumen where
+  fromRow = Resumen <$> field <*> field <*> field
+
+getViajesResumen (Resumen viajes _ _) = viajes
+
+getKmResumen (Resumen _ km _) = km
+
+getTotalResumen (Resumen _ _ total) = total
+
+printResumen :: Resumen -> IO ()
+printResumen elemento = do
+  let viajes = getViajesResumen (elemento)
+  let km = getKmResumen (elemento)
+  let total = getTotalResumen (elemento)
+  let lista = [show viajes, show km, show total]
+  printSubLista lista 0
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+instance FromRow CantidadViajesResumenConsulta where
+  fromRow = CantidadViajesResumenConsulta <$> field
+
+getCantidadViajesConsulta (CantidadViajesResumenConsulta cantidad) = cantidad

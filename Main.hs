@@ -133,9 +133,9 @@ alquilar = do
                   let bicicletaNameText = pack bicicletaName
                   let cedulaInt64 = read cedula :: Int64
                   let estado = 1 :: Int64
-                  execute conn "Insert into Alquiler(Salida,Destino,Bicicleta,Estado,Usuario) values (?,?,?,?,?)" (Alquiler nombreParqueoSalida nombreParqueoLlegadaText bicicletaNameText estado cedulaInt64)
-                  execute conn "Update Bicicleta set Estado=1 where identificador=?" (Only (pack bicicletaName :: Text))
-                  listaIdAlquiler <- query_ conn "select max(ID) from Alquiler" :: IO [IdAlquiler]
+                  execute connection "Insert into Alquiler(Salida,Destino,Bicicleta,Estado,Usuario) values (?,?,?,?,?)" (Alquiler nombreParqueoSalida nombreParqueoLlegadaText bicicletaNameText estado cedulaInt64)
+                  execute connection "Update Bicicleta set Estado=1 where identificador=?" (Only (pack bicicletaName :: Text))
+                  listaIdAlquiler <- query_ connection "select max(ID) from Alquiler" :: IO [IdAlquiler]
                   let idAlquiler = getIdAlquiler2 (listaIdAlquiler !! 0)
                   putStrLn "\nSe ha creado el alquiler, estos son los datos: "
                   putStr ("\n\n")
@@ -204,6 +204,7 @@ facturar = do
       let tipobici = getTipoBicicleta (bicletaLista !! 0)
       let idbici = getIdBicicleta (bicletaLista !! 0)
       let parqueoLlegada = getLlegadaAlquiler (listaAlquiler !! 0)
+      let usuarioAlquiler = getUsuarioAlquiler (listaAlquiler !! 0)
       let parqueoSalida = getSalidaAlquiler (listaAlquiler !! 0)
       let kilometros = getKilometrosFactura (listaFactura !! 0)
       let totalColones = getTotalFactura (listaFactura !! 0)
@@ -224,8 +225,8 @@ facturar = do
       printEmpresas (listaEmpresa !! 0)
       putStr ("\n\n")
       tarifa <- readIORef variableMutable
-      let listaFacturaImpresion = [unpack parqueoSalida, unpack parqueoLlegada, unpack idbici, unpack tipobici, show kilometros, show tarifa, show totalColones]
-      let headFactura = ["Salida", "Llegada", "Bicicleta", "Tipo", "Cantidad de Kilometros", "Tarifa/KM", "Total Factura"]
+      let listaFacturaImpresion = [show usuarioAlquiler, unpack parqueoSalida, unpack parqueoLlegada, unpack idbici, unpack tipobici, show kilometros, show tarifa, show totalColones]
+      let headFactura = ["Usuario", "Salida", "Llegada", "Bicicleta", "Tipo", "Cantidad de Kilometros", "Tarifa/KM", "Total Factura"]
       putStrLn ("Factura : \n")
       printSubLista headFactura 0
       putStr ("\n\n")
@@ -255,6 +256,7 @@ mostrarFactura = do
       let tipobici = getTipoBicicleta (bicletaLista !! 0)
       let idbici = getIdBicicleta (bicletaLista !! 0)
       let parqueoLlegada = getLlegadaAlquiler (listaAlquiler !! 0)
+      let usuarioAlquiler = getUsuarioAlquiler (listaAlquiler !! 0)
       let parqueoSalida = getSalidaAlquiler (listaAlquiler !! 0)
       let kilometros = getKilometrosFactura (listaFactura !! 0)
       let totalColones = getTotalFactura (listaFactura !! 0)
@@ -274,8 +276,8 @@ mostrarFactura = do
       printEmpresas (listaEmpresa !! 0)
       putStr ("\n\n")
       tarifa <- readIORef variableMutable
-      let listaFacturaImpresion = [unpack parqueoSalida, unpack parqueoLlegada, unpack idbici, unpack tipobici, show kilometros, show tarifa, show totalColones]
-      let headFactura = ["Salida", "Llegada", "Bicicleta", "Tipo", "Cantidad de Kilometros", "Tarifa/KM", "Total Factura"]
+      let listaFacturaImpresion = [show usuarioAlquiler, unpack parqueoSalida, unpack parqueoLlegada, unpack idbici, unpack tipobici, show kilometros, show tarifa, show totalColones]
+      let headFactura = ["Usuario", "Salida", "Llegada", "Bicicleta", "Tipo", "Cantidad de Kilometros", "Tarifa/KM", "Total Factura"]
       putStrLn ("Factura : \n")
       printSubLista headFactura 0
       putStr ("\n\n")
@@ -319,6 +321,88 @@ opcionesGenerales = do
                       putStrLn "ERROR: Opción incorrecta, intentelo de nuevo"
                       opcionesGenerales
 
+estadisticas :: IO ()
+estadisticas = do
+  putStrLn "\n\n=================================Opciones Operativas=================================\n\n"
+  putStrLn "1. Top 5 de usuarios con más viaje.\n2. Top 5 de parqueos con más viajes. \n3. Top 3 de bicicletas con más kilómetros recorridos. \n4. Resumen. \n5. Volver.\n"
+  putStrLn "Ingrese la opcion"
+  putStr ">>"
+  hFlush stdout
+  opcion <- getLine
+  conn <- open "PR2.db"
+  if (opcion == "1")
+    then do
+      resultado <- query_ conn "SELECT * from Top5Usuarios" :: IO [Top5Usuarios]
+      if (null resultado)
+        then do
+          putStrLn "todavia no existen los suficientes datos"
+        else do
+          let header = ["Cedula", "Nombre", "Cantidad"]
+          putStr ("\n\n")
+          printSubLista header 0
+          putStr ("\n")
+          mapM_ printTopUsuario resultado
+          putStr ("\n")
+          close conn
+          estadisticas
+    else
+      if (opcion == "2")
+        then do
+          resultado <- query_ conn "SELECT * from Top5Parqueos" :: IO [Top5Parqueos]
+          if (null resultado)
+            then do
+              putStrLn "todavia no existen los suficientes datos"
+            else do
+              let header = ["Nombre", "Cantidad"]
+              putStr ("\n\n")
+              printSubLista header 0
+              putStr ("\n")
+              mapM_ printTopParqueos resultado
+              putStr ("\n")
+              close conn
+              estadisticas
+        else
+          if (opcion == "3")
+            then do
+              resultado <- query_ conn "SELECT * from Top3Bicicletas" :: IO [Top3Bicicletas]
+              if (null resultado)
+                then do
+                  putStrLn "todavia no existen los suficientes datos"
+                else do
+                  let header = ["Bicicleta", "Cantidad"]
+                  putStr ("\n\n")
+                  printSubLista header 0
+                  putStr ("\n")
+                  mapM_ printTopBicicletas resultado
+                  putStr ("\n")
+                  close conn
+                  estadisticas
+            else
+              if (opcion == "4")
+                then do
+                  cantidadDeViajesQuery <- query_ conn "SELECT CantidadViajes from Resumen" :: IO [CantidadViajesResumenConsulta]
+                  let cantidadViajesEntera = getCantidadViajesConsulta (cantidadDeViajesQuery !! 0)
+                  if (cantidadViajesEntera == 0)
+                    then do
+                      putStrLn "todavia no existen los suficientes datos"
+                    else do
+                      resultado <- query_ conn "SELECT * from Resumen" :: IO [Resumen]
+                      let header = ["Cantidad de viajes", "Cantidad de kilometros", "Total facturado"]
+                      putStr ("\n\n")
+                      printSubLista header 0
+                      putStr ("\n")
+                      mapM_ printResumen resultado
+                      putStr ("\n")
+                      close conn
+                      estadisticas
+                else
+                  if (opcion == "5")
+                    then do
+                      return ()
+                    else do
+                      putStrLn "ERROR: Opción incorrecta, intentelo de nuevo"
+                      opcionesOperativas
+
 opcionesOperativas :: IO ()
 opcionesOperativas = do
   putStrLn "\n\n=================================Opciones Operativas=================================\n\n"
@@ -344,6 +428,7 @@ opcionesOperativas = do
             else
               if (opcion == "4")
                 then do
+                  estadisticas
                   opcionesOperativas
                 else
                   if (opcion == "5")
