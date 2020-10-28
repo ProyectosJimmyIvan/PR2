@@ -2,28 +2,30 @@
 
 module Main where
 
-import Data.IORef
-import Data.Int (Int64)
-import Data.List
-import Data.Maybe
-import Data.Text (Text, pack, unpack)
-import Data.Tuple.Only
-import DataTypes
+import Data.IORef --para variables mutables
+import Data.Int (Int64) --para manejo de enteros
+import Data.List --para manejo de listas
+import Data.Maybe --para manejo promesas
+import Data.Text (Text, pack, unpack) --para manejo texto
+import Data.Tuple.Only --para manejo det tuplas
+import DataTypes -- import de las estructuras
 import Database.SQLite.Simple
-  ( Only,
-    close,
+  ( close,
     execute,
     open,
     query,
     query_,
   )
-import Database.SQLite.SimpleErrors (runDBAction)
-import FileHandler (parsearLista, printSubLista, split)
-import System.Exit
-import System.IO
+import FileHandler (parsearLista, printSubLista, split) -- para manejo de archivos
+import System.Exit -- para salirse del programa
+import System.IO -- para manejo de datos desde o hacia la consola
 
+--entradas: 2 puntos (X,Y)
+--salidas: la distancia entre 2 puntos (double)
 distancia (x1, y1) (x2, y2) = sqrt ((x1 - x2) ^ 2 + (y1 - y2) ^ 2)
 
+--entradas: todos parqueos,una lista vacia, un contador en 0, un x,y
+--salidas: una lista con las distancias entre los parqueos y el punto
 calcularDistancias :: (Floating a1, Integral a2, Integral a3) => [Parqueo] -> [a1] -> Int -> a2 -> a3 -> [a1]
 calcularDistancias parqueos res contador x1 y1 = do
   if (contador == length parqueos)
@@ -36,6 +38,8 @@ calcularDistancias parqueos res contador x1 y1 = do
       let conta = contador + 1
       calcularDistancias parqueos respuesta conta x1 y1
 
+--entradas: un x,y
+--salidas:se imprimen las bicicletas del parqueo mas cercano a ese x,y
 consultarBicicletas = do
   putStrLn "Ingrese un X "
   putStr ">>"
@@ -50,25 +54,27 @@ consultarBicicletas = do
   conn <- open "PR2.db"
   q <- query_ conn "SELECT * from Parqueo" :: IO [Parqueo]
   let listaRes = [1.0]
-  let distancias = calcularDistancias q listaRes 0 x y
-  let minimo = minimum distancias
+  let distancias = calcularDistancias q listaRes 0 x y --se calcula la distancia entre todos los parqueos
+  let minimo = minimum distancias --se saca el minimo
   let indiceMinimoConJust = elemIndex minimo distancias
   let indiceMinimo = fromJust indiceMinimoConJust
   putStr ("\n")
-  printBicicletasParqueo (q !! indiceMinimo)
+  printBicicletasParqueo (q !! indiceMinimo) -- se imprimen las bicis
   close conn
 
+--entradas: cedula de usuario, un x, un y, un nombre de parqueo de llegada, un id de bicicleta
+--salidas: Un alquiler
 alquilar = do
   putStr ("\n\n")
   putStrLn "Ingrese un numero de cedula de usuario valido para empezar el tramite"
   putStr ">>"
   hFlush stdout
-  cedula <- getLine
+  cedula <- getLine --se pide la  cedula de usuario
   putStr ("\n")
   conn <- open "PR2.db"
   usuario <- query conn "SELECT * from Usuario where Cedula=? " (Only (read cedula :: Int64)) :: IO [Usuario]
   close conn
-  if (null usuario)
+  if (null usuario) --si el usuario es nulo
     then do
       putStrLn "\n No hay un usuario con esta cedula \n"
     else do
@@ -77,13 +83,13 @@ alquilar = do
       putStrLn "Ingrese un X "
       putStr ">>"
       hFlush stdout
-      input1 <- getLine
+      input1 <- getLine --se pide el x
       putStr ("\n")
       let x = read input1 :: Int64
       putStrLn "Ingrese un y "
       putStr ">>"
       hFlush stdout
-      input2 <- getLine
+      input2 <- getLine --se pide el y
       putStr ("\n")
       let y = read input2 :: Int64
       let listaRes = [1.0]
@@ -102,7 +108,7 @@ alquilar = do
       putStrLn "Ingrese un parqueo de llegada "
       putStr ">>"
       hFlush stdout
-      nombreParqueoLlegada <- getLine
+      nombreParqueoLlegada <- getLine --se pide el parqueo de llegada
       putStr ("\n\n")
       parqueoLlegada <- query conn "SELECT * from Parqueo where  Nombre=?;" (Only (pack nombreParqueoLlegada :: Text)) :: IO [Parqueo]
       close conn
@@ -115,7 +121,7 @@ alquilar = do
               putStrLn "\n No se puede llegar al parqueo del que salio\n"
             else do
               printBicicletasParqueo (q !! indiceMinimo)
-              putStrLn "Ingrese el identificador de la bicicleta a alquilar "
+              putStrLn "Ingrese el identificador de la bicicleta a alquilar " --se pide la bicicleta
               putStr ">>"
               hFlush stdout
               bicicletaName <- getLine
@@ -133,7 +139,9 @@ alquilar = do
                   let bicicletaNameText = pack bicicletaName
                   let cedulaInt64 = read cedula :: Int64
                   let estado = 1 :: Int64
+                  --se inserta el alquiler
                   execute connection "Insert into Alquiler(Salida,Destino,Bicicleta,Estado,Usuario) values (?,?,?,?,?)" (Alquiler nombreParqueoSalida nombreParqueoLlegadaText bicicletaNameText estado cedulaInt64)
+                  --se hace el update a la bicicleta para ponerle como en transito
                   execute connection "Update Bicicleta set Estado=1 where identificador=?" (Only (pack bicicletaName :: Text))
                   listaIdAlquiler <- query_ connection "select max(ID) from Alquiler" :: IO [IdAlquiler]
                   let idAlquiler = getIdAlquiler2 (listaIdAlquiler !! 0)
@@ -146,17 +154,19 @@ alquilar = do
                   printSubLista listaAlquiler 0
                   close connection
 
+--entradas: un numero de alquiler a facturar
+--salidas: Una Factura
 facturar = do
   putStr ("\n\n")
   putStrLn "Ingrese el numero de alquiler valido para empezar el tramite"
   putStr ">>"
   hFlush stdout
-  numeroAlquiler <- getLine
+  numeroAlquiler <- getLine --se pide el número de alquiler
   putStr ("\n")
   conn <- open "PR2.db"
   listaAlquiler <- query conn "select * from Alquiler where estado=1 and Id=?" (Only (read numeroAlquiler :: Int64)) :: IO [AlquilerP]
   close conn
-  if (null listaAlquiler)
+  if (null listaAlquiler) -- si el alquiler no es valido
     then do
       putStrLn "\n Lo sentimos, el alquiler que quiere facturar no existe o ya fue facturado \n"
     else do
@@ -174,7 +184,7 @@ facturar = do
       let electricoEmpresa = getElectricoEmpresa (listaEmpresa !! 0)
       let enteroElectrico = fromIntegral electricoEmpresa
       variableMutable <- newIORef (0 :: Int)
-      if (unpack tipoBici == "AE")
+      if (unpack tipoBici == "AE") -- se define la tarifa aplicada
         then do
           modifyIORef variableMutable (+ enteroElectrico)
           putStr "\n"
@@ -189,9 +199,9 @@ facturar = do
       let x2 = getXParqueo (parqueoSalidaLista !! 0)
       let y1 = getYParqueo (parqueoLlegadaLista !! 0)
       let y2 = getYParqueo (parqueoSalidaLista !! 0)
-      let distance = round (distancia (fromIntegral x1, fromIntegral y1) (fromIntegral x2, fromIntegral y2))
-      let montoTotal = distance * read montoKilometroStr :: Int64
-      execute conn "Insert into Factura(alquiler,cantidadkilometros,totalpagar,Estado) values (?,?,?,?)" (Factura idAlquiler distance montoTotal 1)
+      let distance = round (distancia (fromIntegral x1, fromIntegral y1) (fromIntegral x2, fromIntegral y2)) --distancia recorrida
+      let montoTotal = distance * read montoKilometroStr :: Int64 --monto total de la factura
+      execute conn "Insert into Factura(alquiler,cantidadkilometros,totalpagar,Estado) values (?,?,?,?)" (Factura idAlquiler distance montoTotal 1) -- se inserta la factura
       listaMaxFactura <- query_ conn "SELECT max(Id) from  Factura;" :: IO [IdFactura]
       let idfactura = getIdFactura2 (listaMaxFactura !! 0)
       listaFactura <- query conn "SELECT * from  Factura where Id=?;" (Only (idfactura)) :: IO [FacturaP]
@@ -212,7 +222,7 @@ facturar = do
       let electricoEmpresa = getElectricoEmpresa (listaEmpresa !! 0)
       let enteroElectrico = fromIntegral electricoEmpresa
       variableMutable <- newIORef (0 :: Int)
-      if (unpack tipobici == "AE")
+      if (unpack tipobici == "AE") -- se define la tarifa aplicada
         then do
           modifyIORef variableMutable (+ enteroElectrico)
         else do
@@ -225,7 +235,7 @@ facturar = do
       printEmpresas (listaEmpresa !! 0)
       putStr ("\n\n")
       tarifa <- readIORef variableMutable
-      let listaFacturaImpresion = [show usuarioAlquiler, unpack parqueoSalida, unpack parqueoLlegada, unpack idbici, unpack tipobici, show kilometros, show tarifa, show totalColones]
+      let listaFacturaImpresion = [show usuarioAlquiler, unpack parqueoSalida, unpack parqueoLlegada, unpack idbici, unpack tipobici, show kilometros, show tarifa, show totalColones] --factura a imprimir
       let headFactura = ["Usuario", "Salida", "Llegada", "Bicicleta", "Tipo", "Cantidad de Kilometros", "Tarifa/KM", "Total Factura"]
       putStrLn ("Factura : \n")
       printSubLista headFactura 0
@@ -234,17 +244,18 @@ facturar = do
       putStr ("\n")
       close conn
 
+--Se muestra una factura
 mostrarFactura = do
   putStr ("\n\n")
   putStrLn "Ingrese el numero de factura  para consultar"
   putStr ">>"
   hFlush stdout
-  idFactura <- getLine
+  idFactura <- getLine --se pide el id de la factura
   putStr ("\n")
   conn <- open "PR2.db"
   let headEmpresa = ["Nombre", "Website", "Contacto", "KM/Electrica", "KM/Tradicional"]
   listaFactura <- query conn "SELECT * from  Factura where Id=?;" (Only (read idFactura :: Int64)) :: IO [FacturaP]
-  if (null listaFactura)
+  if (null listaFactura) --se la factura no existe
     then do
       putStrLn "\n Lo sentimos, la factura no existe \n"
     else do
@@ -264,7 +275,7 @@ mostrarFactura = do
       let electricoEmpresa = getElectricoEmpresa (listaEmpresa !! 0)
       let enteroElectrico = fromIntegral electricoEmpresa
       variableMutable <- newIORef (0 :: Int)
-      if (unpack tipobici == "AE")
+      if (unpack tipobici == "AE") -- se define la tarifa aplicada
         then do
           modifyIORef variableMutable (+ enteroElectrico)
         else do
@@ -276,17 +287,16 @@ mostrarFactura = do
       printEmpresas (listaEmpresa !! 0)
       putStr ("\n\n")
       tarifa <- readIORef variableMutable
-      let listaFacturaImpresion = [show usuarioAlquiler, unpack parqueoSalida, unpack parqueoLlegada, unpack idbici, unpack tipobici, show kilometros, show tarifa, show totalColones]
-      let headFactura = ["Usuario", "Salida", "Llegada", "Bicicleta", "Tipo", "Cantidad de Kilometros", "Tarifa/KM", "Total Factura"]
+      let listaFacturaImpresion = [show usuarioAlquiler, unpack parqueoSalida, unpack parqueoLlegada, unpack idbici, unpack tipobici, show kilometros, show tarifa, show totalColones] --factura a imprimir
+      let headFactura = ["Usuario", "Salida", "Llegada", "Bicicleta", "Tipo", "Cantidad de Kilometros", "Tarifa/KM", "Total Factura"] --header de una factura
       putStrLn ("Factura : \n")
       printSubLista headFactura 0
       putStr ("\n\n")
       printSubLista listaFacturaImpresion 0
       putStr ("\n")
-
   close conn
 
-opcionesGenerales :: IO ()
+opcionesGenerales :: IO () --Menu de las opciones generales
 opcionesGenerales = do
   putStrLn "\n\n=================================Opciones Generales=================================\n\n"
   putStrLn "1. Consultar bicicletas.\n2. Alquilar. \n3. Facturar. \n4. Consulta de factura. \n5. Volver.\n"
@@ -296,12 +306,12 @@ opcionesGenerales = do
   opcion <- getLine
   if (opcion == "1")
     then do
-      consultarBicicletas
+      consultarBicicletas --consultar bicicletas
       opcionesGenerales
     else
       if (opcion == "2")
         then do
-          alquilar
+          alquilar --alquilar
           opcionesGenerales
         else
           if (opcion == "3")
@@ -321,7 +331,7 @@ opcionesGenerales = do
                       putStrLn "ERROR: Opción incorrecta, intentelo de nuevo"
                       opcionesGenerales
 
-estadisticas :: IO ()
+estadisticas :: IO () --se muestran las estadisticas con este menu
 estadisticas = do
   putStrLn "\n\n=================================Opciones Operativas=================================\n\n"
   putStrLn "1. Top 5 de usuarios con más viaje.\n2. Top 5 de parqueos con más viajes. \n3. Top 3 de bicicletas con más kilómetros recorridos. \n4. Resumen. \n5. Volver.\n"
@@ -332,8 +342,8 @@ estadisticas = do
   conn <- open "PR2.db"
   if (opcion == "1")
     then do
-      resultado <- query_ conn "SELECT * from Top5Usuarios" :: IO [Top5Usuarios]
-      if (null resultado)
+      resultado <- query_ conn "SELECT * from Top5Usuarios" :: IO [Top5Usuarios] --Top 5 de usuarios con más viaje
+      if (null resultado) --si es nulo
         then do
           putStrLn "todavia no existen los suficientes datos"
         else do
@@ -348,8 +358,8 @@ estadisticas = do
     else
       if (opcion == "2")
         then do
-          resultado <- query_ conn "SELECT * from Top5Parqueos" :: IO [Top5Parqueos]
-          if (null resultado)
+          resultado <- query_ conn "SELECT * from Top5Parqueos" :: IO [Top5Parqueos] --Top 5 de parqueos con más viajes.
+          if (null resultado) --si es nulo
             then do
               putStrLn "todavia no existen los suficientes datos"
             else do
@@ -364,8 +374,8 @@ estadisticas = do
         else
           if (opcion == "3")
             then do
-              resultado <- query_ conn "SELECT * from Top3Bicicletas" :: IO [Top3Bicicletas]
-              if (null resultado)
+              resultado <- query_ conn "SELECT * from Top3Bicicletas" :: IO [Top3Bicicletas] --Top 3 de bicicletas con más kilómetros recorridos
+              if (null resultado) --si es nulo
                 then do
                   putStrLn "todavia no existen los suficientes datos"
                 else do
@@ -382,11 +392,11 @@ estadisticas = do
                 then do
                   cantidadDeViajesQuery <- query_ conn "SELECT CantidadViajes from Resumen" :: IO [CantidadViajesResumenConsulta]
                   let cantidadViajesEntera = getCantidadViajesConsulta (cantidadDeViajesQuery !! 0)
-                  if (cantidadViajesEntera == 0)
+                  if (cantidadViajesEntera == 0) --si es nulo
                     then do
                       putStrLn "todavia no existen los suficientes datos"
                     else do
-                      resultado <- query_ conn "SELECT * from Resumen" :: IO [Resumen]
+                      resultado <- query_ conn "SELECT * from Resumen" :: IO [Resumen] --Resumen
                       let header = ["Cantidad de viajes", "Cantidad de kilometros", "Total facturado"]
                       putStr ("\n\n")
                       printSubLista header 0
@@ -403,7 +413,7 @@ estadisticas = do
                       putStrLn "ERROR: Opción incorrecta, intentelo de nuevo"
                       opcionesOperativas
 
-opcionesOperativas :: IO ()
+opcionesOperativas :: IO () --menu de las opciones operativas
 opcionesOperativas = do
   putStrLn "\n\n=================================Opciones Operativas=================================\n\n"
   putStrLn "1. Mostrar parqueos.\n2. Mostrar bicicletas. \n3. Mostrar usuarios. \n4. Estadisticas. \n5. Volver.\n"
@@ -440,6 +450,7 @@ opcionesOperativas = do
 
 ---------------------------------------------------------------------------------------------
 printBicicletasParqueo parqueo = do
+  --imprime todas las bicicletas de un parqueo
   conn <- open "PR2.db"
   let nombre = getNombreParqueo (parqueo)
   q <- query conn "SELECT * from Bicicleta where Parqueo=? and estado=0;" (Only (nombre :: Text)) :: IO [Bicicleta]
@@ -458,6 +469,7 @@ printBicicletasParqueo parqueo = do
   close conn
 
 printearParqueos = do
+  --imprime todos los  parqueo
   conn <- open "PR2.db"
   putStr ("\n\n")
   putStrLn "Ingrese la Provincia"
@@ -473,6 +485,7 @@ printearParqueos = do
     else mapM_ printBicicletasParqueo q
 
 printearBicicletas = do
+  --imprime todas las bicicletas o todas que estan en transito
   putStr ("\n\n")
   putStrLn "Ingrese el comando a ejecutar"
   putStr ">>"
@@ -483,7 +496,7 @@ printearBicicletas = do
   putStr ("\n")
   printSubLista headBicicleta 0
   putStr ("\n")
-  if (opcion == "#")
+  if (opcion == "#") -- si se quieren ver las que estan en transito
     then do
       q <- query_ conn "SELECT * from Bicicleta" :: IO [Bicicleta]
       mapM_ printBicicletas q
@@ -494,6 +507,7 @@ printearBicicletas = do
   close conn
 
 printearUsuarios = do
+  --imprime los usuarios
   putStr ("\n\n")
   putStrLn "Ingrese el comando a ejecutar"
   putStr ">>"
@@ -510,7 +524,7 @@ printearUsuarios = do
       mapM_ printUsuarios q
     else do
       q <- query conn "SELECT * from Usuario where Cedula=? " (Only (read opcion :: Int64)) :: IO [Usuario]
-      if (null q)
+      if (null q) -- si la cedula no existe
         then do
           putStr "\n No hay un Usuario que tenga esta Cedula \n"
         else do
@@ -520,7 +534,7 @@ printearUsuarios = do
           putStr ("\n")
           let headAlquileres = ["ID", "Salida", "Destino", "Bicicleta"]
           alquileres <- query conn "SELECT * from Alquiler where Usuario=?;" (Only (read opcion :: Int64)) :: IO [AlquilerP]
-          if (null alquileres)
+          if (null alquileres) -- si el usuario no tiene alquileres
             then do
               putStr "\n Este usaurio no tiene alquileres \n"
             else do
@@ -529,7 +543,7 @@ printearUsuarios = do
 
   close conn
 
-menuPrincipal :: IO ()
+menuPrincipal :: IO () --Menu principal
 menuPrincipal = do
   putStrLn "\n\n=================================Menu general=================================\n\n"
   putStrLn "1. Opciones Operativas.\n2. Opciones Generales.\n3. Salir del programa.\n"
@@ -555,6 +569,7 @@ menuPrincipal = do
               menuPrincipal
 
 cargarUsuarios = do
+  --carga los usuarios desde un csv
   putStrLn "Ingrese la ruta del archivo de los usuarios"
   putStr ">>"
   hFlush stdout
@@ -565,6 +580,7 @@ cargarUsuarios = do
   mapM_ getUsuarioInsertar valores
 
 cargarParqueos = do
+  --carga los parqueos desde un csv
   putStrLn "Ingrese la ruta del archivo de los Parqueos"
   putStr ">>"
   hFlush stdout
@@ -575,6 +591,7 @@ cargarParqueos = do
   mapM_ getParqueoInsertar valores
 
 cargarBicicletas = do
+  --carga las bicicletas desde un csv
   putStrLn "Ingrese la ruta del archivo de las Bicletas"
   putStr ">>"
   hFlush stdout

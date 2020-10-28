@@ -3,12 +3,7 @@
 
 module FileHandler where
 
-import Control.Monad (when)
-import Data.Int (Int64)
 import Data.List.Split (splitOneOf)
-import Data.Text
-import Database.SQLite.Simple
-import Database.SQLite.SimpleErrors
 
 --Funcion que crea una lista de sublistas apartir de una lista de strings
 --Entradas: lista de strings, contador, lista vacia
@@ -29,7 +24,7 @@ split p1 p2 = func p1 p2 [[]]
 
 --Función que realiza una tabulación para mostrar un texto en idea de tabla
 --Entradas: Un string y un contador iniciando en 0
---Restricciones: string no mayor a 25 caracteres
+--Restricciones: string no mayor a 20 caracteres
 --Salida: un string
 tabular_aux (text, cont) = do
   if (cont >= 20)
